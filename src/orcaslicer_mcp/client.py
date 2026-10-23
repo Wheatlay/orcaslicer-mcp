@@ -104,6 +104,16 @@ class OrcaClient:
             raise BlockedKey(hits)
         return await self._request("PUT", f"/api/v1/objects/{obj_id}/config", json=changes)
 
+    async def cut_object(self, obj_id: int, point, normal, connectors=None,
+                         place_on_cut: bool = True, instance: int = 0) -> dict:
+        body = {"plane": {"point": list(point), "normal": list(normal)},
+                "place_on_cut": place_on_cut, "instance": instance}
+        if connectors:
+            body["connectors"] = connectors
+        # a big part can take a while to cut; the fork allows up to 60 s
+        return await self._request("POST", f"/api/v1/objects/{obj_id}/cut", json=body,
+                                   timeout=70.0)
+
     async def transform_object(self, obj_id: int, translate=None, rotate=None, scale=None) -> dict:
         body = {}
         if translate is not None:

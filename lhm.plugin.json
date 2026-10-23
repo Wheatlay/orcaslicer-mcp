@@ -130,6 +130,10 @@
       "description": "Move/rotate/scale an object by id. translate=[dx,dy,dz] mm (relative), rotate=[rx,ry,rz] degrees (relative), scale=[sx,sy,sz] absolute factor. Provide at least one."
     },
     {
+      "name": "cut_object",
+      "description": "Cut one object with a plane, optionally with round dowels, like the Cut tool but with no dialog."
+    },
+    {
       "name": "arrange_plate",
       "description": "Auto-arrange all objects on the plate (async job; poll get_job_status until idle)."
     },

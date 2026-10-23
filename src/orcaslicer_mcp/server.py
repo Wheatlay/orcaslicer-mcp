@@ -498,6 +498,38 @@ async def transform_object(object_id: int, translate: list[float] | None = None,
 
 
 @mcp.tool()
+async def cut_object(
+    object_id: Annotated[int, Field(description="Integer id of the object to cut, from list_objects or load_model.")],
+    point: Annotated[list[float], Field(description=(
+        "A point on the cut plane, [x, y, z] in bed (world) millimetres, as list_objects reports "
+        "bounding boxes. The plane must pass through the object."))],
+    normal: Annotated[list[float], Field(description=(
+        "The plane's normal [nx, ny, nz]; any length. [0, 0, 1] is a horizontal cut, "
+        "[1, 0, 0] a vertical cut across X."))],
+    connectors: Annotated[list[dict] | None, Field(description=(
+        "Optional round dowels joining the halves. Each: {\"pos\": [x, y, z] on the cut plane "
+        "(world mm), \"radius\": 2.5, \"height\": 8 (depth into each half), "
+        "\"radius_tolerance\": 0.1, \"height_tolerance\": 0.1} (tolerances 0..1, as in the Cut "
+        "gizmo). Each dowel makes a hole in both halves plus a separate dowel object."))] = None,
+    place_on_cut: Annotated[bool, Field(description=(
+        "Lay each half on its cut face, which is usually the flat side to print on."))] = True,
+) -> dict:
+    """Cut one object with a plane, optionally with round dowels, like the Cut tool but with no dialog.
+
+    Returns the new objects with their ids (both halves, plus one object per dowel) and
+    'warnings', such as open edges left by the cut; Orca's repair is not run automatically.
+    Ctrl+Z in the window undoes it.
+
+    Needs the fork build with the /cut route. Re-slice afterwards; arrange or move the pieces
+    with transform_object, since they stay where the original was."""
+    try:
+        async with _client() as c:
+            return await c.cut_object(object_id, point, normal, connectors, place_on_cut)
+    except ApiError as e:
+        return _m4_err(e, "a fork build with POST /objects/{id}/cut")
+
+
+@mcp.tool()
 async def arrange_plate() -> dict:
     """Auto-arrange all objects on the plate (async job; poll get_job_status until idle).
 
@@ -866,7 +898,9 @@ def prompt_edit_preset_safely(change: str) -> str:
 async def load_model(path: str) -> dict:
     """Load a model file (path on the OrcaSlicer host) onto the current plate.
     Accepts .stl/.obj/.3mf, plus .step/.stp on fork v2.3.2-mcp.3+. Large STEP files
-    can take a minute to tessellate; the call waits."""
+    can take a minute to tessellate; the call waits. On builds that report it, each loaded
+    object carries its 'id', so transform_object / cut_object can use it directly without
+    list_objects."""
     try:
         async with _client() as c:
             return await c.load_model(path)
@@ -1509,6 +1543,7 @@ _TOOL_ANNOTATIONS: dict[str, tuple[str, bool, bool]] = {
     "set_object_config": ("Set per-object config", False, False),
     "duplicate_object": ("Duplicate object", False, False),
     "transform_object": ("Transform object", False, False),
+    "cut_object": ("Cut object with a plane", False, True),
     "arrange_plate": ("Arrange plate", False, False),
     "add_plate": ("Add plate", False, False),
     "select_plate": ("Select plate", False, False),
