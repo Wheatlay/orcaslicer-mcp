@@ -1342,8 +1342,13 @@ async def recall_prints(model_name: str | None = None, limit: int = 5) -> dict:
 @mcp.tool()
 async def render_plate(view: str = "editor", angle: str = "iso",
                        width: int = 800, height: int = 600,
-                       frame: str | None = None):
+                       frame: str | None = None, yaw: float | None = None,
+                       pitch: float | None = None, zoom: float | None = None):
     """Render a PNG picture of the current plate so you can SEE it.
+
+    yaw / pitch (degrees) orbit the camera around the framed view after the preset angle,
+    and zoom multiplies the framing (2 = twice as close); editor view, builds with the
+    camera patch only. Use them to look at a detail from another side.
 
     view="editor": the models on the bed BEFORE slicing - use to check
     orientation, plate contact, and first-layer footprint (an Euler triple is
@@ -1359,7 +1364,8 @@ async def render_plate(view: str = "editor", angle: str = "iso",
     try:
         async with _client() as c:
             png = await c.get_plate_render(view=view, angle=angle,
-                                           width=width, height=height, frame=frame)
+                                           width=width, height=height, frame=frame,
+                                           yaw=yaw, pitch=pitch, zoom=zoom)
             return Image(data=png, format="png")
     except Conflict:
         return {"error": "no_slice_result",
